@@ -40,7 +40,7 @@
   }
 
   function normalize(text) {
-    return String(text || "").replace(/\s+/g, "").replace(/[，。；：、“”‘’（）()《》]/g, "");
+    return String(text || "").replace(/\s+/g, "").replace(/[，。；：、""''（）()《》]/g, "");
   }
 
   function seeded(seed) {
@@ -72,10 +72,10 @@
     const text = compactText(article.text);
     const patterns = [
       /处([^。；]{4,32}?)(?:。|；|$)/,
-      /是([^。；]{4,28}?)(?:।|；|$)/,
-      /应当([^。；]{4,28}?)(?:।|；|$)/,
-      /可以([^。；]{4,28}?)(?:।|；|$)/,
-      /不得([^。；]{4,28}?)(?:।|；|$)/,
+      /是([^。；]{4,28}?)(?:。|；|$)/,
+      /应当([^。；]{4,28}?)(?:。|；|$)/,
+      /可以([^。；]{4,28}?)(?:。|；|$)/,
+      /不得([^。；]{4,28}?)(?:。|；|$)/,
     ];
     for (const pattern of patterns) {
       const match = text.match(pattern);
@@ -131,7 +131,8 @@
   function currentArticle() {
     const filtered = filteredArticles();
     if (!filtered.length) return articles[0];
-    if (state.articleIndex >= filtered.length) state.articleIndex = 0;
+    if (state.articleIndex >= filtered.length) state.articleIndex = filtered.length - 1;
+    if (state.articleIndex < 0) state.articleIndex = 0;
     return filtered[state.articleIndex];
   }
 
@@ -184,22 +185,23 @@
 
   function renderSidebar() {
     return `
-      <aside class="sidebar panel">
-        <div class="brand">
+      <aside class="sidebar ${state.mobilePanel === 'menu' ? 'open' : ''}">
+        <div class="brand panel">
           <h1>刑法练习</h1>
           <p class="small-note">学习您的法律知识</p>
         </div>
         <div class="progress-card panel">
           <div class="progress-line"><div class="progress-fill" style="width: ${Math.min(100, (progressCount() / (articles.length * questionTypes.length)) * 100)}%"></div></div>
-          <div class="small-note" style="text-align:center; margin-top:8px">已完成: ${progressCount()} 题</div>
+          <div class="small-note" style="text-align:center; margin-top:8px">已完成: ${progressCount()} / ${articles.length * questionTypes.length} 题</div>
         </div>
         <nav class="filter-card panel">
           <label class="section-title">章节选择</label>
           <select id="chapter">
-            ${chapters.map(c => `<option value="${c}" ${state.chapter === c ? "selected" : ""}>${c}</option>`).join('')}
+            ${chapters.map(c => `<option value="${escapeHtml(c)}" ${state.chapter === c ? "selected" : ""}>${escapeHtml(c)}</option>`).join('')}
           </select>
         </nav>
         <div class="menu-list panel">
+          <h3 style="margin:0 0 12px;font-size:14px;color:var(--muted)">最近错题</h3>
           <div class="mistake-list">
             ${renderMistakeShortlist()}
           </div>
@@ -228,7 +230,6 @@
     const question = makeQuestion(article);
     const isChecked = state.checked;
     const typeId = state.type;
-    const currentTypeObj = questionTypes.find(t => t.id === typeId);
 
     return `
       <main class="workspace">
@@ -237,8 +238,9 @@
             ${questionTypes.map(t => `<button class="tab ${t.id === typeId ? 'active' : ''}" data-type="${t.id}">${t.label}</button>`).join('')}
           </div>
           <div class="top-actions">
-            <button class="icon-button" id="hint" title="提示"><svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2-11h-2V7h2v2zm0 8h-2v-2h2v2zm-2-4h-2V9h2v2z\"/></svg></button>
-            <button class="icon-button" id="themeToggle"><svg width="20\" height="20\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M12 7a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0 2a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm0 14c-2.69 0-5-2.31-5-5H7c0 3.87 3.13 7 7 7s7-3.13 7-7h-4c0 2.76-2.24 5-5 5z\"/></svg></button>
+            ${state.showHint ? `<div class="hint-bubble">提示：关键词在「${escapeHtml(question.key)}」附近</div>` : ''}
+            <button class="icon-button" id="hint" title="提示">💡</button>
+            <button class="icon-button" id="themeToggle" title="切换主题">${state.theme === 'light' ? '🌙' : '☀️'}</button>
           </div>
         </div>
         
@@ -247,23 +249,23 @@
             <div>
               <div class="article-kicker">${escapeHtml(article.part || '总则')}</div>
               <h2>${escapeHtml(article.label)}</h2>
-              <div class="meta">第 ${articleNumber(article)} 条</div>
+              <div class="meta">${escapeHtml(article.chapter || '')}</div>
             </div>
             <div class="actions">
-               <button class="ghost-button" id="prev"><svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d=\"M15.41 16.59L10.25 21l-4.56-4.56L3 17.91V6h18v2.09z\"/></svg></button>
-               <button class="primary-button" id="next">下一步</button>
+               <button class="ghost-button" id="prev">← 上一条</button>
+               <button class="primary-button" id="next">下一条 →</button>
             </div>
           </header>
 
           <div class="prompt">
-            ${this.getPromptHtml(question)}
+            ${getPromptHtml(question, typeId)}
           </div>
 
           <div class="question-area">
-            ${this.getQuestionContentHtml(question)}
+            ${getQuestionContentHtml(question, typeId)}
           </div>
 
-          <div class="actions">
+          <div class="actions" style="margin-top:20px;">
             ${!isChecked 
               ? `<button class="primary-button" id="check">提交答案</button>
                  <button class="ghost-button" id="reveal">显示答案</button>`
@@ -271,24 +273,24 @@
             }
           </div>
 
-          ${state.feedback ? `<div class="feedback ${state.feedback.tone}">${state.feedback.text}</div>` : ''}
+          ${state.feedback ? `<div class="feedback ${state.feedback.tone}">${escapeHtml(state.feedback.text)}</div>` : ''}
         </div>
       </main>
     `;
   }
 
-  function getPromptHtml(question) {
-    if (state.type === 'choice') return question.firstSentence;
-    if (state.type === 'blank') return question.blankPrompt;
-    return question.firstSentence;
+  function getPromptHtml(question, typeId) {
+    if (typeId === 'choice') return `<p><strong>请选择正确的关键词：</strong></p><p>${escapeHtml(question.firstSentence)}</p>`;
+    if (typeId === 'blank') return `<p><strong>请填写空白处的内容：</strong></p>`;
+    return `<p><strong>请找出下列表述中的错误并更正：</strong></p>`;
   }
 
-  function getQuestionContentHtml(question) {
-    if (state.type === 'choice') {
+  function getQuestionContentHtml(question, typeId) {
+    if (typeId === 'choice') {
       return `
         <div class="choices">
           ${question.options.map((opt, i) => `
-            <button class="choice-button ${state.selected === opt.id ? 'selected' : ''}" data-choice="${opt.id}">
+            <button class="choice-button ${state.selected === opt ? 'selected' : ''}" data-choice="${escapeHtml(opt)}">
               <span class="choice-letter">${String.fromCharCode(65 + i)}</span>
               <span>${escapeHtml(opt)}</span>
             </button>
@@ -296,14 +298,15 @@
         </div>
       `;
     }
-    if (state.type === 'blank') {
-      return `<div class="prompt">${question.blankPrompt}</div>`;
+    if (typeId === 'blank') {
+      return `
+        <div class="prompt" style="padding:16px;background:var(--paper-soft);border-radius:8px;margin-bottom:16px;">${escapeHtml(question.blankPrompt)}</div>
+        <input type="text" class="answer-input" id="blankInput" placeholder="请输入答案" value="${escapeHtml(state.typed)}" ${state.checked ? 'disabled' : ''} />
+      `;
     }
     return `
-      <div class="prompt">${question.wrongPrompt}</div>
-      <div class="actions">
-        <button class="primary-button" id="check">校验</button>
-      </div>
+      <div class="prompt" style="padding:16px;background:var(--paper-soft);border-radius:8px;margin-bottom:16px;">${escapeHtml(question.wrongPrompt)}</div>
+      <input type="text" class="answer-input" id="correctionInput" placeholder="请输入正确的关键词" value="${escapeHtml(state.typed)}" ${state.checked ? 'disabled' : ''} />
     `;
   }
 
@@ -322,18 +325,10 @@
   function renderMobileBar() {
     return `
       <div class="mobile-bar">
-        <button class="ghost-button" id="mobileMenu">${renderIcon("menu")} 目录</button>
-        <button class="ghost-button" id="mobileSource">${renderIcon("panel")} 原文</button>
+        <button class="ghost-button" id="mobileMenu">☰ 目录</button>
+        <button class="ghost-button" id="mobileSource">📄 原文</button>
       </div>
     `;
-  }
-
-  function renderIcon(type) {
-    const icons = {
-      menu: '<svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M3 18h18v-2H3v2zM3 6v2h18V6H3z"/></svg>',
-      panel: '<svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d=\"M4 19h16v-2H4v2zM4 13h16v-2H4v2zM4 7v2h16V7H4z\"/></svg>'
-    };
-    return icons[type];
   }
 
   function bindEvents() {
@@ -344,34 +339,20 @@
         render();
       });
     });
+    
     document.querySelectorAll("[data-choice]").forEach((button) => {
       button.addEventListener("click", () => {
-        state.selected = button.dataset.choice;
-        state.feedback = null;
-        render();
+        if (!state.checked) {
+          state.selected = button.dataset.choice;
+          state.feedback = null;
+          render();
+        }
       });
     });
-    document.querySelectorAll("[data-chapter]").forEach((button) => {
-      button.addEventListener("click", () => {
-        state.chapter = button.dataset.chapter;
-        state.articleIndex = 0;
-        resetAnswer();
-        render();
-      });
-    });
+    
     document.querySelectorAll("[data-mistake-id]").forEach((button) => {
       button.addEventListener("click", () => goToArticle(button.dataset.mistakeId, button.dataset.mistakeType));
     });
-
-    const search = document.getElementById("search");
-    if (search) {
-      search.addEventListener("input", (event) => {
-        state.query = event.target.value;
-        state.articleIndex = 0;
-        resetAnswer();
-        render();
-      });
-    }
 
     const chapter = document.getElementById("chapter");
     if (chapter) {
@@ -380,6 +361,20 @@
         state.articleIndex = 0;
         resetAnswer();
         render();
+      });
+    }
+
+    const blankInput = document.getElementById("blankInput");
+    if (blankInput) {
+      blankInput.addEventListener("input", (e) => {
+        state.typed = e.target.value;
+      });
+    }
+
+    const correctionInput = document.getElementById("correctionInput");
+    if (correctionInput) {
+      correctionInput.addEventListener("input", (e) => {
+        state.typed = e.target.value;
       });
     }
 
@@ -414,36 +409,54 @@
   function checkAnswer() {
     const article = currentArticle();
     const question = makeQuestion(article);
+    
     if (state.type === "choice") {
-      if (!state.selected) return;
-      const isCorrect = state.selected === question.key;
+      if (!state.selected) {
+        state.feedback = { tone: "warn", text: "请先选择一个答案" };
+        render();
+        return;
+      }
+      const isCorrect = normalize(state.selected) === normalize(question.key);
       state.feedback = isCorrect 
-        ? { tone: "good", text: "回答正确！" }
-        : { tone: "bad", text: `回答错误。正确答案是：${question.key}` };
+        ? { tone: "good", text: "✓ 回答正确！" }
+        : { tone: "bad", text: `✗ 回答错误。正确答案是：${question.key}` };
       setProgress(article, "choice", isCorrect ? "correct" : "wrong");
     } else if (state.type === "blank") {
+      if (!state.typed.trim()) {
+        state.feedback = { tone: "warn", text: "请先输入答案" };
+        render();
+        return;
+      }
       const isCorrect = normalize(state.typed) === normalize(question.key);
       state.feedback = isCorrect 
-        ? { tone: "good", text: "回答正确！" }
-        : { tone: "bad", text: `回答错误。正确答案是：${question.key}` };
+        ? { tone: "good", text: "✓ 回答正确！" }
+        : { tone: "bad", text: `✗ 回答错误。正确答案是：${question.key}` };
       setProgress(article, "blank", isCorrect ? "correct" : "wrong");
     } else if (state.type === "correction") {
+      if (!state.typed.trim()) {
+        state.feedback = { tone: "warn", text: "请先输入正确答案" };
+        render();
+        return;
+      }
       const isCorrect = normalize(state.typed) === normalize(question.key);
       state.feedback = isCorrect 
-        ? { tone: "good", text: "回答正确！" }
-        : { tone: "bad", text: `回答错误。正确答案是：${question.key}` };
+        ? { tone: "good", text: "✓ 回答正确！" }
+        : { tone: "bad", text: `✗ 回答错误。正确答案是：${question.key}` };
       setProgress(article, "correction", isCorrect ? "correct" : "wrong");
     }
+    
     state.checked = true;
     render();
   }
 
   function nextArticle(step) {
+    const filtered = filteredArticles();
     state.articleIndex += step;
-    state.checked = false;
-    state.feedback = null;
-    state.selected = "";
-    state.typed = "";
+    
+    if (state.articleIndex >= filtered.length) state.articleIndex = 0;
+    if (state.articleIndex < 0) state.articleIndex = filtered.length - 1;
+    
+    resetAnswer();
     render();
   }
 
@@ -452,20 +465,31 @@
     state.feedback = null;
     state.selected = "";
     state.typed = "";
+    state.showHint = false;
   }
 
   function goToArticle(id, type) {
-    const index = articles.findIndex(a => a.id === id);
-    if (index !== -1) {
-      state.articleIndex = index;
-      state.type = type;
-      resetAnswer();
-      render();
+    const filtered = filteredArticles();
+    const article = articles.find(a => a.id === id);
+    if (article) {
+      const index = filtered.indexOf(article);
+      if (index !== -1) {
+        state.articleIndex = index;
+        state.type = type;
+        resetAnswer();
+        state.mobilePanel = "";
+        render();
+      }
     }
   }
 
   function escapeHtml(value) {
-    return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
   }
 
   render();
