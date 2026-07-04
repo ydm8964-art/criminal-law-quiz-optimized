@@ -21,6 +21,9 @@
     feedback: null,
     showHint: false,
     mobilePanel: "",
+    mistakeFilter: "all",
+    startedAt: Date.now(),
+    streak: Number(localStorage.getItem("criminal-law-quiz-streak") || 0),
     progress: loadProgress(),
     theme: localStorage.getItem(themeKey) || "light",
   };
@@ -162,8 +165,35 @@
     saveProgress();
   }
 
+  function progressEntries() {
+    return Object.values(state.progress);
+  }
+
   function progressCount() {
-    return Object.values(state.progress).length;
+    return progressEntries().length;
+  }
+
+  function correctCount() {
+    return progressEntries().filter((item) => item.result === "correct").length;
+  }
+
+  function wrongCount() {
+    return progressEntries().filter((item) => item.result === "wrong").length;
+  }
+
+  function accuracyRate() {
+    const total = progressCount();
+    return total ? Math.round((correctCount() / total) * 100) : 0;
+  }
+
+  function elapsedSeconds() {
+    return Math.max(0, Math.round((Date.now() - state.startedAt) / 1000));
+  }
+
+  function formatSeconds(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return m ? `${m}分${String(s).padStart(2, "0")}秒` : `${s}秒`;
   }
 
   function render() {
@@ -193,18 +223,40 @@
         <div class="progress-card panel">
           <div class="progress-line"><div class="progress-fill" style="width: ${Math.min(100, (progressCount() / (articles.length * questionTypes.length)) * 100)}%"></div></div>
           <div class="small-note" style="text-align:center; margin-top:8px">已完成: ${progressCount()} / ${articles.length * questionTypes.length} 题</div>
+          <div class="stats-grid">
+            <div class="stat"><strong>${correctCount()}</strong><span>正确</span></div>
+            <div class="stat"><strong>${wrongCount()}</strong><span>错题</span></div>
+            <div class="stat"><strong>${accuracyRate()}%</strong><span>正确率</span></div>
+          </div>
         </div>
         <nav class="filter-card panel">
           <label class="section-title">章节选择</label>
           <select id="chapter">
             ${chapters.map(c => `<option value="${escapeHtml(c)}" ${state.chapter === c ? "selected" : ""}>${escapeHtml(c)}</option>`).join('')}
           </select>
+          <label class="section-title section-gap">全文搜索</label>
+          <input class="search-input" id="search" type="search" placeholder="搜索条文、章节或关键词" value="${escapeHtml(state.query)}" />
+          <label class="section-title section-gap">快速跳转</label>
+          <div class="jump-row">
+            <input class="search-input" id="jumpInput" type="number" min="1" max="505" placeholder="条文号" />
+            <button class="mini-button" id="jumpBtn">跳转</button>
+          </div>
         </nav>
         <div class="menu-list panel">
-          <h3 style="margin:0 0 12px;font-size:14px;color:var(--muted)">最近错题</h3>
+          <div class="panel-head">
+            <h3>错题本</h3>
+            <select id="mistakeFilter" class="mini-select">
+              <option value="all" ${state.mistakeFilter === "all" ? "selected" : ""}>全部</option>
+              ${questionTypes.map(t => `<option value="${t.id}" ${state.mistakeFilter === t.id ? "selected" : ""}>${t.label}</option>`).join('')}
+            </select>
+          </div>
           <div class="mistake-list">
             ${renderMistakeShortlist()}
           </div>
+        </div>
+        <div class="utility-card panel">
+          <button class="ghost-button full-button" id="resetProgress">清空学习记录</button>
+          <p class="small-note">支持快捷键：←/→ 切换条文，Enter 提交。</p>
         </div>
       </aside>
     `;
@@ -212,7 +264,7 @@
 
   function renderMistakeShortlist() {
     const mistakes = Object.entries(state.progress)
-      .filter(([, value]) => value.result === "wrong")
+      .filter(([, value]) => value.result === "wrong" && (state.mistakeFilter === "all" || value.type === state.mistakeFilter))
       .slice(-10)
       .reverse();
     return mistakes.length
@@ -222,7 +274,7 @@
             return `<button class="mistake-item" data-mistake-id="${id}" data-mistake-type="${item.type}"><strong style="color:var(--bad)">${escapeHtml(item.label)}</strong><span class="mistake-meta">${escapeHtml(item.chapter || "")}</span></button>`;
           })
           .join("")
-      : '<div class="empty">还没有错题</div>';
+      : '<div class="empty">暂无错题，继续保持！</div>';
   }
 
   function renderQuestion() {
@@ -238,6 +290,9 @@
             ${questionTypes.map(t => `<button class="tab ${t.id === typeId ? 'active' : ''}" data-type="${t.id}">${t.label}</button>`).join('')}
           </div>
           <div class="top-actions">
+            <span class="session-pill">第 ${state.articleIndex + 1} / ${filteredArticles().length} 条</span>
+            <span class="session-pill">连对 ${state.streak}</span>
+            <span class="session-pill">${formatSeconds(elapsedSeconds())}</span>
             ${state.showHint ? `<div class="hint-bubble">提示：关键词在「${escapeHtml(question.key)}」附近</div>` : ''}
             <button class="icon-button" id="hint" title="提示">💡</button>
             <button class="icon-button" id="themeToggle" title="切换主题">${state.theme === 'light' ? '🌙' : '☀️'}</button>
@@ -316,7 +371,9 @@
       <aside class="inspector ${state.mobilePanel === 'source' ? 'open' : ''}">
         <section class="source-card panel">
           <h3>条文原文</h3>
+          <div class="source-meta">${escapeHtml(data.title)} · 共 ${data.articleCount} 条</div>
           <div class="article-text">${escapeHtml(article.text)}</div>
+          <div class="source-version">${escapeHtml(data.version || "")}</div>
         </section>
       </aside>
     `;
@@ -363,6 +420,40 @@
         render();
       });
     }
+
+    const search = document.getElementById("search");
+    if (search) {
+      search.addEventListener("input", (event) => {
+        state.query = event.target.value;
+        state.articleIndex = 0;
+        resetAnswer();
+        render();
+      });
+    }
+
+    const mistakeFilter = document.getElementById("mistakeFilter");
+    if (mistakeFilter) {
+      mistakeFilter.addEventListener("change", (event) => {
+        state.mistakeFilter = event.target.value;
+        render();
+      });
+    }
+
+    document.getElementById("jumpBtn")?.addEventListener("click", jumpToNumber);
+    document.getElementById("jumpInput")?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") jumpToNumber();
+    });
+
+    document.getElementById("resetProgress")?.addEventListener("click", () => {
+      if (confirm("确定要清空全部学习记录和错题吗？")) {
+        state.progress = {};
+        state.streak = 0;
+        localStorage.removeItem(storageKey);
+        localStorage.removeItem("criminal-law-quiz-streak");
+        resetAnswer();
+        render();
+      }
+    });
 
     const blankInput = document.getElementById("blankInput");
     if (blankInput) {
@@ -444,7 +535,10 @@
         : { tone: "bad", text: `✗ 回答错误。正确答案是：${question.key}` };
       setProgress(article, "correction", isCorrect ? "correct" : "wrong");
     }
-    
+
+    const result = state.feedback?.tone === "good";
+    state.streak = result ? state.streak + 1 : 0;
+    localStorage.setItem("criminal-law-quiz-streak", String(state.streak));
     state.checked = true;
     render();
   }
@@ -460,12 +554,27 @@
     render();
   }
 
+  function jumpToNumber() {
+    const input = document.getElementById("jumpInput");
+    const number = Number(input?.value || 0);
+    if (!number) return;
+    const target = articles.find((article) => articleNumber(article) === number);
+    if (!target) return;
+    state.chapter = "全部";
+    state.query = "";
+    state.articleIndex = articles.indexOf(target);
+    state.mobilePanel = "";
+    resetAnswer();
+    render();
+  }
+
   function resetAnswer() {
     state.checked = false;
     state.feedback = null;
     state.selected = "";
     state.typed = "";
     state.showHint = false;
+    state.startedAt = Date.now();
   }
 
   function goToArticle(id, type) {
@@ -492,5 +601,52 @@
       .replace(/'/g, "&#039;");
   }
 
+  // Touch swipe gesture support for mobile
+  let touchStartX = 0;
+  let touchEndX = 0;
+  
+  document.addEventListener("touchstart", (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+  }, { passive: true });
+  
+  document.addEventListener("touchend", (e) => {
+    touchEndX = e.changedTouches[0].screenX;
+    const swipeThreshold = 80;
+    const diff = touchStartX - touchEndX;
+    
+    if (Math.abs(diff) < swipeThreshold) return;
+    
+    const activeElement = document.activeElement;
+    if (activeElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeElement.tagName)) {
+      return;
+    }
+    
+    if (diff > 0) {
+      nextArticle(1);
+    } else {
+      nextArticle(-1);
+    }
+  }, { passive: true });
+
+  document.addEventListener("keydown", (event) => {
+    const tag = document.activeElement?.tagName;
+    if (["INPUT", "SELECT", "TEXTAREA"].includes(tag)) return;
+    if (event.key === "ArrowRight") nextArticle(1);
+    if (event.key === "ArrowLeft") nextArticle(-1);
+    if (event.key === "Enter" && !state.checked) checkAnswer();
+    if (event.key.toLowerCase() === "h") {
+      state.showHint = !state.showHint;
+      render();
+    }
+  });
+
+  setInterval(() => {
+    if (!state.checked) {
+      const timer = document.querySelector(".top-actions .session-pill:nth-child(3)");
+      if (timer) timer.textContent = formatSeconds(elapsedSeconds());
+    }
+  }, 1000);
+
   render();
 })();
+

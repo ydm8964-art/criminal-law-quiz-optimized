@@ -1,0 +1,10 @@
+{
+  "name": "刑法条文练习",
+  "short_name": "刑法练习",
+  "description": "刑法条文选择题、填空题、改错题练习工具",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f5f7fa",
+  "theme_color": "#3b82f6",
+  "lang": "zh-CN"
+}
