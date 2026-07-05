@@ -1306,3 +1306,321 @@ noscript {
     font-size: 15px;
   }
 }
+
+/* Enhanced mobile touch targets */
+@media (max-width: 1024px) {
+  .primary-button,
+  .ghost-button {
+    min-height: 56px;
+    font-size: 16px;
+    padding: 0 24px;
+    font-weight: 700;
+  }
+
+  .question-card .actions {
+    gap: 16px;
+  }
+
+  .question-card .actions button {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .article-head .actions {
+    width: 100%;
+  }
+
+  .article-head .actions button {
+    flex: 1;
+    height: 48px;
+  }
+
+  .icon-button {
+    width: 48px;
+    height: 48px;
+    font-size: 24px;
+  }
+
+  .choice-button {
+    min-height: 72px;
+    padding: 18px 20px;
+  }
+
+  .choice-letter {
+    width: 44px;
+    height: 44px;
+    font-size: 19px;
+  }
+
+  .judge-choices .choice-button {
+    min-height: 120px;
+    padding: 24px;
+  }
+
+  .judge-choices .choice-letter {
+    width: 56px;
+    height: 56px;
+    font-size: 28px;
+  }
+
+  .judge-choices .choice-button span:last-child {
+    font-size: 20px;
+  }
+
+  .answer-input {
+    height: 56px;
+    font-size: 17px;
+    padding: 0 18px;
+  }
+
+  .mobile-bar button {
+    min-height: 56px;
+    font-size: 16px;
+    font-weight: 700;
+    padding: 0 20px;
+  }
+
+  .mistake-item {
+    min-height: 72px;
+    padding: 18px 20px;
+  }
+
+  select,
+  .search-input {
+    min-height: 52px;
+    font-size: 17px;
+    padding: 0 16px;
+  }
+
+  .mini-button {
+    min-height: 52px;
+    padding: 0 20px;
+    font-size: 16px;
+  }
+
+  .tab {
+    min-height: 48px;
+    padding: 12px 16px;
+    font-size: 15px;
+  }
+
+  .hint-bubble {
+    font-size: 14px;
+    padding: 10px 18px;
+  }
+
+  .feedback {
+    padding: 20px 18px;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+}
+
+@media (max-width: 640px) {
+  .primary-button,
+  .ghost-button {
+    min-height: 60px;
+    font-size: 17px;
+    border-radius: 14px;
+  }
+
+  .article-head .actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .article-head .actions button {
+    width: 100%;
+    height: 52px;
+  }
+
+  .choice-button {
+    min-height: 76px;
+    border-radius: 14px;
+  }
+
+  .judge-choices .choice-button {
+    min-height: 140px;
+    border-radius: 16px;
+  }
+
+  .answer-input {
+    height: 60px;
+    font-size: 18px;
+    border-radius: 14px;
+  }
+
+  .mobile-bar {
+    padding: 12px;
+    box-shadow: var(--shadow-xl);
+  }
+
+  .mobile-bar button {
+    min-height: 60px;
+    border-radius: 14px;
+  }
+
+  .question-card .actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .question-card .actions button {
+    width: 100%;
+  }
+
+  .icon-button {
+    width: 52px;
+    height: 52px;
+    font-size: 26px;
+  }
+
+  .topbar {
+    padding: 16px;
+  }
+
+  .type-tabs {
+    gap: 8px;
+  }
+
+  .tab {
+    min-height: 52px;
+    border-radius: 12px;
+  }
+
+  .session-pill {
+    height: 36px;
+    padding: 0 10px;
+    font-size: 13px;
+  }
+
+  .top-actions {
+    gap: 10px;
+  }
+}
+
+/* Improved touch feedback */
+@media (hover: none) and (pointer: coarse) {
+  .primary-button:active {
+    transform: scale(0.96);
+    box-shadow: var(--shadow);
+  }
+
+  .ghost-button:active {
+    transform: scale(0.97);
+    background: var(--line);
+  }
+
+  .choice-button:active {
+    transform: scale(0.98);
+  }
+
+  .tab:active {
+    transform: scale(0.94);
+  }
+
+  .icon-button:active {
+    transform: scale(0.88);
+  }
+}
+
+/* Better spacing for mobile */
+@media (max-width: 640px) {
+  .question-card {
+    padding: 20px 16px 24px;
+  }
+
+  .article-head {
+    padding-bottom: 20px;
+    margin-bottom: 24px;
+  }
+
+  .prompt {
+    margin-bottom: 24px;
+  }
+
+  .question-area {
+    margin-bottom: 24px;
+  }
+
+  .choices {
+    gap: 14px;
+  }
+
+  .feedback {
+    margin-top: 20px;
+    border-radius: 14px;
+  }
+}
+
+/* Fix hint bubble positioning on mobile */
+@media (max-width: 1024px) {
+  .hint-bubble {
+    position: fixed;
+    top: auto;
+    bottom: 100px;
+    left: 16px;
+    right: 16px;
+    text-align: center;
+    z-index: 150;
+    box-shadow: var(--shadow-xl);
+  }
+}
+
+@media (max-width: 640px) {
+  .hint-bubble {
+    bottom: 90px;
+    font-size: 15px;
+    padding: 14px 20px;
+    border-radius: 14px;
+  }
+}
+
+/* Better mobile header layout */
+@media (max-width: 640px) {
+  .article-head {
+    gap: 16px;
+  }
+
+  .article-head > div:first-child {
+    width: 100%;
+  }
+
+  .article-kicker {
+    display: inline-block;
+    margin-bottom: 10px;
+  }
+
+  .article-head h2 {
+    margin-bottom: 8px;
+  }
+
+  .meta {
+    margin-bottom: 12px;
+  }
+}
+
+/* Ensure buttons don't overlap on small screens */
+@media (max-width: 380px) {
+  .primary-button,
+  .ghost-button {
+    font-size: 15px;
+    padding: 0 16px;
+  }
+
+  .mobile-bar button {
+    font-size: 14px;
+    padding: 0 12px;
+  }
+
+  .session-pill {
+    font-size: 11px;
+    padding: 0 8px;
+    height: 32px;
+  }
+
+  .icon-button {
+    width: 48px;
+    height: 48px;
+  }
+}
