@@ -3,6 +3,7 @@
   const articles = data.articles;
   const questionTypes = [
     { id: "choice", label: "选择题" },
+    { id: "judge", label: "判断题" },
     { id: "blank", label: "填空题" },
     { id: "correction", label: "改错题" },
   ];
@@ -112,20 +113,34 @@
   function makeQuestion(article) {
     const key = keywordFor(article);
     const number = articleNumber(article);
-    const firstSentence = sentenceParts(article)[0];
+    const text = compactText(article.text);
+    
+    // 选择题：条文挖空，选项包含正确答案和干扰项
     const distractors = nearbyArticles(article, 9)
       .map(keywordFor)
       .filter((item) => item && normalize(item) !== normalize(key));
     const options = shuffle([key, ...Array.from(new Set(distractors)).slice(0, 3)], number + 17);
-    const wrong = options.find((item) => normalize(item) !== normalize(key)) || "三年以下有期徒刑或者拘役";
-    const blankPrompt = compactText(article.text).replace(key, "____");
-    const wrongPrompt = compactText(article.text).replace(key, wrong);
+    const choicePrompt = text.replace(key, "____");
+    
+    // 判断题：正确或错误表述
+    const wrongKeyword = options.find((item) => normalize(item) !== normalize(key)) || "三年以下有期徒刑或者拘役";
+    const isCorrect = seeded(number + 100)() > 0.5;
+    const judgePrompt = isCorrect ? text : text.replace(key, wrongKeyword);
+    const judgeAnswer = isCorrect ? "correct" : "wrong";
+    
+    // 填空题：关键词留空
+    const blankPrompt = text.replace(key, "____");
+    
+    // 改错题：错误表述
+    const wrongPrompt = text.replace(key, wrongKeyword);
 
     return {
       key,
-      wrong,
-      firstSentence,
+      wrongKeyword,
       options,
+      choicePrompt,
+      judgePrompt,
+      judgeAnswer,
       blankPrompt,
       wrongPrompt,
     };
@@ -335,9 +350,10 @@
   }
 
   function getPromptHtml(question, typeId) {
-    if (typeId === 'choice') return `<p><strong>请选择正确的关键词：</strong></p><p>${escapeHtml(question.firstSentence)}</p>`;
-    if (typeId === 'blank') return `<p><strong>请填写空白处的内容：</strong></p>`;
-    return `<p><strong>请找出下列表述中的错误并更正：</strong></p>`;
+    if (typeId === 'choice') return `<p><strong>请根据条文选择正确的关键词填入空白处：</strong></p><p class="prompt-text">${escapeHtml(question.choicePrompt)}</p>`;
+    if (typeId === 'judge') return `<p><strong>请判断下列表述是否正确：</strong></p><p class="prompt-text">${escapeHtml(question.judgePrompt)}</p>`;
+    if (typeId === 'blank') return `<p><strong>请填写空白处的内容：</strong></p><p class="prompt-text">${escapeHtml(question.blankPrompt)}</p>`;
+    return `<p><strong>请找出下列表述中的错误并更正：</strong></p><p class="prompt-text">${escapeHtml(question.wrongPrompt)}</p>`;
   }
 
   function getQuestionContentHtml(question, typeId) {
@@ -353,14 +369,26 @@
         </div>
       `;
     }
+    if (typeId === 'judge') {
+      return `
+        <div class="choices judge-choices">
+          <button class="choice-button ${state.selected === 'correct' ? 'selected' : ''}" data-choice="correct">
+            <span class="choice-letter">✓</span>
+            <span>正确</span>
+          </button>
+          <button class="choice-button ${state.selected === 'wrong' ? 'selected' : ''}" data-choice="wrong">
+            <span class="choice-letter">✗</span>
+            <span>错误</span>
+          </button>
+        </div>
+      `;
+    }
     if (typeId === 'blank') {
       return `
-        <div class="prompt" style="padding:16px;background:var(--paper-soft);border-radius:8px;margin-bottom:16px;">${escapeHtml(question.blankPrompt)}</div>
         <input type="text" class="answer-input" id="blankInput" placeholder="请输入答案" value="${escapeHtml(state.typed)}" ${state.checked ? 'disabled' : ''} />
       `;
     }
     return `
-      <div class="prompt" style="padding:16px;background:var(--paper-soft);border-radius:8px;margin-bottom:16px;">${escapeHtml(question.wrongPrompt)}</div>
       <input type="text" class="answer-input" id="correctionInput" placeholder="请输入正确的关键词" value="${escapeHtml(state.typed)}" ${state.checked ? 'disabled' : ''} />
     `;
   }
@@ -478,8 +506,15 @@
       render();
     });
     document.getElementById("reveal")?.addEventListener("click", () => {
-      const question = makeQuestion(currentArticle());
-      state.feedback = { tone: "warn", text: `正确答案：${question.key}` };
+      const article = currentArticle();
+      const question = makeQuestion(article);
+      let answerText = "";
+      if (state.type === "choice" || state.type === "blank" || state.type === "correction") {
+        answerText = `正确答案：${question.key}`;
+      } else if (state.type === "judge") {
+        answerText = `正确答案：${question.judgeAnswer === "correct" ? "正确" : "错误"}`;
+      }
+      state.feedback = { tone: "warn", text: answerText };
       state.checked = true;
       render();
     });
@@ -512,6 +547,17 @@
         ? { tone: "good", text: "✓ 回答正确！" }
         : { tone: "bad", text: `✗ 回答错误。正确答案是：${question.key}` };
       setProgress(article, "choice", isCorrect ? "correct" : "wrong");
+    } else if (state.type === "judge") {
+      if (!state.selected) {
+        state.feedback = { tone: "warn", text: "请先选择正确或错误" };
+        render();
+        return;
+      }
+      const isCorrect = state.selected === question.judgeAnswer;
+      state.feedback = isCorrect 
+        ? { tone: "good", text: "✓ 判断正确！" }
+        : { tone: "bad", text: `✗ 判断错误。正确答案是：${question.judgeAnswer === "correct" ? "正确" : "错误"}` };
+      setProgress(article, "judge", isCorrect ? "correct" : "wrong");
     } else if (state.type === "blank") {
       if (!state.typed.trim()) {
         state.feedback = { tone: "warn", text: "请先输入答案" };
@@ -649,4 +695,3 @@
 
   render();
 })();
-

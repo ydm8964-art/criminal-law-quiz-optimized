@@ -1256,3 +1256,53 @@ noscript {
     height: 44px;
   }
 }
+
+/* Judge question specific styles */
+.judge-choices {
+  grid-template-columns: 1fr 1fr;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.judge-choices .choice-button {
+  min-height: 100px;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.judge-choices .choice-letter {
+  width: 48px;
+  height: 48px;
+  font-size: 24px;
+}
+
+.judge-choices .choice-button span:last-child {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.prompt-text {
+  padding: 20px;
+  background: var(--paper-soft);
+  border-radius: var(--radius);
+  border-left: 4px solid var(--accent);
+  font-size: 16px;
+  line-height: 1.9;
+  margin-top: 12px;
+}
+
+@media (max-width: 640px) {
+  .judge-choices {
+    grid-template-columns: 1fr;
+    max-width: 100%;
+  }
+
+  .judge-choices .choice-button {
+    min-height: 80px;
+  }
+
+  .prompt-text {
+    padding: 16px;
+    font-size: 15px;
+  }
+}
