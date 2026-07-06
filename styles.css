@@ -151,6 +151,37 @@ button:focus {
   font-weight: 500;
 }
 
+.brand .section-title {
+  color: rgba(255, 255, 255, 0.85);
+  margin-top: 6px;
+  margin-bottom: 8px;
+  text-align: left;
+}
+
+.brand .law-select {
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-weight: 600;
+}
+
+.brand .law-select option {
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.brand .law-select:hover,
+.brand .law-select:focus {
+  border-color: #fff;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.25);
+}
+
+.brand .law-meta {
+  margin-top: 12px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 13px;
+}
+
 .progress-card {
   background: var(--paper-soft);
 }

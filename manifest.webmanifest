@@ -1,7 +1,7 @@
 {
-  "name": "刑法条文练习",
-  "short_name": "刑法练习",
-  "description": "刑法条文选择题、填空题、改错题练习工具",
+  "name": "法条练习 · 刑法/民法典/民事诉讼法/刑事诉讼法",
+  "short_name": "法条练习",
+  "description": "刑法、民法典、民事诉讼法、刑事诉讼法条文练习工具，支持选择题、判断题、填空题、改错题",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#f5f7fa",

@@ -1,6 +1,11 @@
 (function () {
-  const data = window.CRIMINAL_LAW_DATA;
-  const articles = data.articles;
+  const LAWS = [
+    { id: "criminal", short: "刑法", accent: "#3b82f6", data: window.CRIMINAL_LAW_DATA },
+    { id: "civil-code", short: "民法典", accent: "#0c7c69", data: window.CIVIL_CODE_DATA },
+    { id: "civil-procedure", short: "民事诉讼法", accent: "#7c3aed", data: window.CIVIL_PROCEDURE_DATA },
+    { id: "criminal-procedure", short: "刑事诉讼法", accent: "#c2410c", data: window.CRIMINAL_PROCEDURE_DATA },
+  ].filter((law) => law.data && Array.isArray(law.data.articles));
+
   const questionTypes = [
     { id: "choice", label: "选择题" },
     { id: "judge", label: "判断题" },
@@ -8,8 +13,23 @@
     { id: "correction", label: "改错题" },
   ];
 
-  const storageKey = "criminal-law-quiz-progress-v1";
-  const themeKey = "criminal-law-quiz-theme";
+  const themeKey = "law-quiz-theme";
+  const lawKey = "law-quiz-current-law";
+
+  function progressStorageKey(lawId) {
+    return `law-quiz-progress-${lawId}-v1`;
+  }
+  function streakStorageKey(lawId) {
+    return `law-quiz-streak-${lawId}`;
+  }
+  function buildChapters(list) {
+    return ["全部", ...Array.from(new Set(list.map((a) => a.chapter).filter(Boolean)))];
+  }
+
+  let currentLaw = LAWS.find((l) => l.id === localStorage.getItem(lawKey)) || LAWS[0];
+  let data = currentLaw.data;
+  let articles = data.articles;
+  let chapters = buildChapters(articles);
 
   const state = {
     type: "choice",
@@ -24,23 +44,39 @@
     mobilePanel: "",
     mistakeFilter: "all",
     startedAt: Date.now(),
-    streak: Number(localStorage.getItem("criminal-law-quiz-streak") || 0),
+    streak: Number(localStorage.getItem(streakStorageKey(currentLaw.id)) || 0),
     progress: loadProgress(),
     theme: localStorage.getItem(themeKey) || "light",
   };
 
-  const chapters = ["全部", ...Array.from(new Set(articles.map((a) => a.chapter).filter(Boolean)))];
+  function applyLaw(lawId) {
+    const law = LAWS.find((l) => l.id === lawId);
+    if (!law || law.id === currentLaw.id) return;
+    currentLaw = law;
+    data = law.data;
+    articles = data.articles;
+    chapters = buildChapters(articles);
+    localStorage.setItem(lawKey, law.id);
+    state.progress = loadProgress();
+    state.streak = Number(localStorage.getItem(streakStorageKey(law.id)) || 0);
+    state.chapter = "全部";
+    state.query = "";
+    state.articleIndex = 0;
+    state.mobilePanel = "";
+    resetAnswer();
+    render();
+  }
 
   function loadProgress() {
     try {
-      return JSON.parse(localStorage.getItem(storageKey)) || {};
+      return JSON.parse(localStorage.getItem(progressStorageKey(currentLaw.id))) || {};
     } catch {
       return {};
     }
   }
 
   function saveProgress() {
-    localStorage.setItem(storageKey, JSON.stringify(state.progress));
+    localStorage.setItem(progressStorageKey(currentLaw.id), JSON.stringify(state.progress));
   }
 
   function normalize(text) {
@@ -232,8 +268,12 @@
     return `
       <aside class="sidebar ${state.mobilePanel === 'menu' ? 'open' : ''}">
         <div class="brand panel">
-          <h1>刑法练习</h1>
-          <p class="small-note">学习您的法律知识</p>
+          <h1>法条练习</h1>
+          <label class="section-title section-gap">选择法律</label>
+          <select id="lawSelect" class="law-select">
+            ${LAWS.map(l => `<option value="${l.id}" ${currentLaw.id === l.id ? "selected" : ""}>${escapeHtml(l.short)}</option>`).join('')}
+          </select>
+          <p class="small-note law-meta">${escapeHtml(currentLaw.data.title)} · 共 ${currentLaw.data.articleCount} 条</p>
         </div>
         <div class="progress-card panel">
           <div class="progress-line"><div class="progress-fill" style="width: ${Math.min(100, (progressCount() / (articles.length * questionTypes.length)) * 100)}%"></div></div>
@@ -253,7 +293,7 @@
           <input class="search-input" id="search" type="search" placeholder="搜索条文、章节或关键词" value="${escapeHtml(state.query)}" />
           <label class="section-title section-gap">快速跳转</label>
           <div class="jump-row">
-            <input class="search-input" id="jumpInput" type="number" min="1" max="505" placeholder="条文号" />
+            <input class="search-input" id="jumpInput" type="number" min="1" max="${articles.length}" placeholder="条文号" />
             <button class="mini-button" id="jumpBtn">跳转</button>
           </div>
         </nav>
@@ -439,6 +479,13 @@
       button.addEventListener("click", () => goToArticle(button.dataset.mistakeId, button.dataset.mistakeType));
     });
 
+    const lawSelect = document.getElementById("lawSelect");
+    if (lawSelect) {
+      lawSelect.addEventListener("change", (event) => {
+        applyLaw(event.target.value);
+      });
+    }
+
     const chapter = document.getElementById("chapter");
     if (chapter) {
       chapter.addEventListener("change", (event) => {
@@ -476,8 +523,8 @@
       if (confirm("确定要清空全部学习记录和错题吗？")) {
         state.progress = {};
         state.streak = 0;
-        localStorage.removeItem(storageKey);
-        localStorage.removeItem("criminal-law-quiz-streak");
+        localStorage.removeItem(progressStorageKey(currentLaw.id));
+        localStorage.removeItem(streakStorageKey(currentLaw.id));
         resetAnswer();
         render();
       }
@@ -584,7 +631,7 @@
 
     const result = state.feedback?.tone === "good";
     state.streak = result ? state.streak + 1 : 0;
-    localStorage.setItem("criminal-law-quiz-streak", String(state.streak));
+    localStorage.setItem(streakStorageKey(currentLaw.id), String(state.streak));
     state.checked = true;
     render();
   }
